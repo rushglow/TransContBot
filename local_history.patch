@@ -1,0 +1,18 @@
+Index: src/main/java/org/batukhtin/transcontbot/adapter/CustomMessageListener.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/org/batukhtin/transcontbot/adapter/CustomMessageListener.java b/src/main/java/org/batukhtin/transcontbot/adapter/CustomMessageListener.java
+--- a/src/main/java/org/batukhtin/transcontbot/adapter/CustomMessageListener.java	
++++ b/src/main/java/org/batukhtin/transcontbot/adapter/CustomMessageListener.java	(date 1746803921084)
+@@ -18,7 +18,8 @@
+     public void messagesAdded(MessageCountEvent e) {
+         for (Message message : e.getMessages()) {
+             try {
+-                botNotificationService.setNotificationText("Новое письмо от " + message.getFrom()[0] + ": " + message.getSubject());
++                botProducer.setNotificationText("Новое письмо от " + message.getFrom()[0] + ": " + message.getSubject());
++                botProducer.sendNotification();
+                 log.info("Новое письмо от {}: {}", message.getFrom()[0], message.getSubject());
+             } catch (Exception ex) {
+                 log.error("Ошибка при обработке письма", ex);
