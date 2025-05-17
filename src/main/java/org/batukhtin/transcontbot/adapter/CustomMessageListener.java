@@ -13,6 +13,9 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -24,9 +27,10 @@ public class CustomMessageListener implements MessageCountListener {
         for (Message message : e.getMessages()) {
             try {
                 MimeMessage mimeMessage = new MimeMessage((MimeMessage) message);
-                botProducer.setNotificationText(mimeMessage.getSubject(), getRequestLink(mimeMessage));
+                Multipart multipart = (Multipart) mimeMessage.getContent();
+                botProducer.setNotificationText(mimeMessage.getSubject(), getRequestLink(multipart, mimeMessage.getSubject()));
                 botProducer.sendMessage();
-                log.info("Новое письмо от {}: {}", mimeMessage.getFrom()[0], mimeMessage.getSubject());
+                //log.info("Новое письмо от {}: {}", mimeMessage.getFrom()[0], mimeMessage.getSubject());
             } catch (MessagingException ex) {
                 log.error(ex.getMessage(), ex);
                 botProducer.setNotificationText("Пришел новый запрос", "http://sd.trcont.ru");
@@ -42,45 +46,54 @@ public class CustomMessageListener implements MessageCountListener {
 
     }
 
-    private String getRequestLink(Message message) throws Exception {
-        log.info("Тип письма: " + message.getContentType().toString());
-        if (message.isMimeType("multipart/*")) {
-            Multipart multipart = (Multipart) message.getContent();
-            for (int i = 0; i < multipart.getCount(); i++) {
-                BodyPart part = multipart.getBodyPart(i);
-                log.info("Тип вложенной части: " + part.getContentType().toString());
-                if (part.isMimeType("multipart/*")) {
-                    Multipart bodyMultipart = (Multipart) part.getContent();
-                    for (int j = 0; j < bodyMultipart.getCount(); j++) {
-                        log.info("Тип вложенной дважды части: " + part.getContentType().toString());
-                        BodyPart bodyPart = bodyMultipart.getBodyPart(j);
-                        if (bodyPart.isMimeType("text/html")) {
-                            String html = (String) part.getContent();
-                            log.info("HTML " + extractLinkFromHtml(html));
-                            return extractLinkFromHtml(html);
-                        }
-                    }
-                }
+    private String getRequestLink(Multipart originMultipart, String subject) throws Exception {
+        List<String> parentHtmlList = new ArrayList<>();
 
+        for (int i = 0; i < originMultipart.getCount(); i++) {
+            //log.info("Название мультипарта: " + originMultipart.getContentType());
+            if (originMultipart.getBodyPart(i).isMimeType("multipart/*")) {
+                Multipart bodyMultipart = (Multipart) originMultipart.getBodyPart(i).getContent();
+                parentHtmlList.addAll(getRequestLink(bodyMultipart));
+            }
+            if (originMultipart.getBodyPart(i).isMimeType("text/*")) {
+                String html = (String) originMultipart.getBodyPart(i).getContent();
+                parentHtmlList.add(html);
             }
         }
 
-        return "http://sd.trcont.ru/sd/operator";
+        return extractLinkFromHtml(parentHtmlList, subject);
     }
 
-    private String extractLinkFromHtml(String html) {
-        Document doc = Jsoup.parse(html);
-        Elements links = doc.select("a[href]");
+    private List<String> getRequestLink(Multipart originMultipart) throws Exception {
+        List<String> htmlList = new ArrayList<>();
+        for (int i = 0; i < originMultipart.getCount(); i++) {
+            if (originMultipart.getBodyPart(i).isMimeType("multipart/*")) {
+                Multipart bodyMultipart = (Multipart) originMultipart.getBodyPart(i).getContent();
+                htmlList.addAll(getRequestLink(bodyMultipart));
+            }
+            if (originMultipart.getBodyPart(i).isMimeType("text/*")) {
+                String html = (String) originMultipart.getBodyPart(i).getContent();
+                htmlList.add(html);
+            }
+        }
+        return htmlList;
+    }
 
-        for (Element link : links) {
-            String linkText = link.text().toLowerCase();
-            String href = link.attr("href");
+    private String extractLinkFromHtml(List<String> html, String subject) {
+        for (String htmlElement : html){
+            Document doc = Jsoup.parse(htmlElement);
+            Elements links = doc.select("a");
 
-            if (href.startsWith("http://sd.trcont.ru/sd/operator")) {
-                return href;
+            for (Element link : links) {
+                String linkText = link.text().toLowerCase();
+                //log.info("Найденная ссылка: " + linkText);
+                if (linkText.contains(subject.replaceAll(".*?(№\\d+).*", "$1"))) {
+                    return link.attr("href");
+                }
             }
         }
 
+        //log.info("Ссылка не найдена в линках");
         return "http://sd.trcont.ru/sd/operator";
     }
 }

@@ -10,16 +10,14 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessages;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -32,7 +30,8 @@ public class BotProducer extends TelegramLongPollingBot {
     private String currentWorker;
     private String notificationText;
     private boolean userHaveSeenMessage;
-    private Integer lastMessageId;
+
+    Deque<Integer> messageIds = new ArrayDeque<>();
 
     private static final Map<String, String> BUTTONS = new HashMap<>();
 
@@ -101,15 +100,16 @@ public class BotProducer extends TelegramLongPollingBot {
                         List<InlineKeyboardButton> buttons = new ArrayList<>();
                         buttons.add(createButton(BUTTONS.get("/worker"), "/worker"));
 
+                        deleteMessages();
+
                         sendMessage("@" + currentWorker + " вышел со смены", buttons);
                         currentWorker = null;
-
                     }
                 }
             }
         }
 
-        if (update.hasMessage() && update.getMessage().hasText()) {
+        if (update.hasMessage() && update.getMessage().hasText() && update.getMessage().getChatId().equals(botConfig.getChatId())) {
             String messageText = update.getMessage().getText();
 
             switch (messageText) {
@@ -151,7 +151,7 @@ public class BotProducer extends TelegramLongPollingBot {
         message.setReplyMarkup(markup);
 
         try {
-            lastMessageId = execute(message).getMessageId();
+            addMessageId(execute(message).getMessageId());
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
@@ -173,6 +173,25 @@ public class BotProducer extends TelegramLongPollingBot {
             e.printStackTrace();
 
         }
+    }
+
+    public void deleteMessages() {
+        DeleteMessages deleteMessages = new DeleteMessages();
+        deleteMessages.setChatId(botConfig.getChatId());
+        deleteMessages.setMessageIds(messageIds.stream().toList());
+        messageIds.clear();
+        try {
+            execute(deleteMessages);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void addMessageId(int id) {
+        if (messageIds.size() >= 15) {
+            deleteMessage(messageIds.removeFirst());
+        }
+        messageIds.addLast(id);
     }
 
     private InlineKeyboardButton createButton(String text, String callBack) {
@@ -206,7 +225,7 @@ public class BotProducer extends TelegramLongPollingBot {
         EditMessageReplyMarkup editMarkup = new EditMessageReplyMarkup();
         editMarkup.setReplyMarkup(updatedMarkup);
         editMarkup.setChatId(botConfig.getChatId());
-        editMarkup.setMessageId(lastMessageId);
+        editMarkup.setMessageId(messageIds.getLast());
 
         try {
             execute(editMarkup);
