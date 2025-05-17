@@ -11,9 +11,12 @@ import org.batukhtin.transcontbot.properties.MailProperties;
 import org.batukhtin.transcontbot.adapter.CustomMessageListener;
 import org.batukhtin.transcontbot.service.MailReaderService;
 import org.eclipse.angus.mail.imap.IMAPFolder;
+import org.eclipse.angus.mail.util.MailConnectException;
 import org.springframework.stereotype.Service;
 
+import java.net.UnknownHostException;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -55,9 +58,16 @@ public class MailReaderServiceImpl implements MailReaderService {
                 }
             }
         } catch (FolderClosedException e) {
-            log.error("Перезапуск подключения");
+            //log.error("Перезапуск подключения");
             listenForEmails();
-        } catch (Exception e) {
+        } catch (MailConnectException e){
+            try {
+                TimeUnit.MINUTES.sleep(5);
+                listenForEmails();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }catch (Exception e) {
             log.error("Ошибка при подключении к IMAP", e);
         }
     }
