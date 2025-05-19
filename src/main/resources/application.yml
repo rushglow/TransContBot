@@ -5,11 +5,11 @@ spring:
 mail:
   host: imap.mail.ru
   username: batukhtin.v@delotech.ru
-  password: Mdh7p7pEwrE8kcLx4hYx
+  password: 
   folder: 1 линия заявки
   interval-seconds: 60
 
 bot:
   name: TkServiceBot
-  token: 7918392630:AAHExIzFNCzc_LoJAbXWT1_Zd6NUEh87WM0
+  token: 
   group: -1002551515752
