@@ -13,3 +13,5 @@ bot:
   name: TkServiceBot
   token: 7918392630:AAHExIzFNCzc_LoJAbXWT1_Zd6NUEh87WM0
   group: -1002551515752
+  logsThread: 2020
+  historyThread: 2023

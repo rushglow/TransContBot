@@ -18,4 +18,8 @@ public class BotConfig {
     String token;
     @Value("${bot.group}")
     Long chatId;
+    @Value("${bot.historyThread}")
+    Integer historyThread;
+    @Value("${bot.logsThread}")
+    Integer logsThread;
 }

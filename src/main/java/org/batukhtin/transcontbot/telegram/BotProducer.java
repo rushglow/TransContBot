@@ -123,6 +123,10 @@ public class BotProducer extends TelegramLongPollingBot {
                         deleteMessage(update.getMessage().getMessageId());
 
                 }
+                case "/chat_topic" -> {
+                    sendMessage("Чат id: " + update.getMessage().getChatId().toString()
+                            + "\nТопик id: " + update.getMessage().getMessageThreadId(), new ArrayList<>());
+                }
                 default -> {
 
                         List<InlineKeyboardButton> buttons = new ArrayList<>();
@@ -158,6 +162,34 @@ public class BotProducer extends TelegramLongPollingBot {
 
     }
 
+    public void sendHistory(){
+        if (currentWorker != null && notificationText != null) {
+            SendMessage message = new SendMessage();
+            message.setChatId(botConfig.getChatId());
+            message.setText(currentWorker + "\n\n" + notificationText);
+            message.setParseMode("HTML");
+            message.setMessageThreadId(botConfig.getHistoryThread());
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    public void sendLogs(String textToSend){
+        SendMessage message = new SendMessage();
+        message.setChatId(botConfig.getChatId());
+        message.setText(textToSend);
+        message.setMessageThreadId(botConfig.getLogsThread());
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void deleteMessage(Integer messageId) {
         try {
             if (messageId != null) {
@@ -188,7 +220,7 @@ public class BotProducer extends TelegramLongPollingBot {
     }
 
     public void addMessageId(int id) {
-        if (messageIds.size() >= 15) {
+        if (messageIds.size() >= 7) {
             deleteMessage(messageIds.removeFirst());
         }
         messageIds.addLast(id);
@@ -211,7 +243,6 @@ public class BotProducer extends TelegramLongPollingBot {
             buttons.add(createButton(BUTTONS.get("/notification"), "/notification"));
 
             sendMessage("@"+ currentWorker + "\n\n" + notificationText, buttons);
-
         }
     }
 

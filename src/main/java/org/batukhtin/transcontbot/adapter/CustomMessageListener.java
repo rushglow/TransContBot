@@ -30,13 +30,16 @@ public class CustomMessageListener implements MessageCountListener {
                 Multipart multipart = (Multipart) mimeMessage.getContent();
                 botProducer.setNotificationText(mimeMessage.getSubject(), getRequestLink(multipart, mimeMessage.getSubject()));
                 botProducer.sendMessage();
+                botProducer.sendHistory();
                 //log.info("Новое письмо от {}: {}", mimeMessage.getFrom()[0], mimeMessage.getSubject());
             } catch (MessagingException ex) {
                 log.error(ex.getMessage(), ex);
                 botProducer.setNotificationText("Пришел новый запрос", "http://sd.trcont.ru");
                 botProducer.sendMessage();
+                botProducer.sendHistory();
             } catch (Exception ex) {
-                log.error("Ошибка при обработке письма", ex);
+                log.error("Ошибка при обработке письма: ", ex.getMessage());
+                botProducer.sendLogs("Ошибка при обработке письма: " + ex.getMessage());
             }
         }
     }
