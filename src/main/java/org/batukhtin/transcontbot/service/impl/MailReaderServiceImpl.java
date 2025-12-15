@@ -10,8 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.batukhtin.transcontbot.properties.MailProperties;
 import org.batukhtin.transcontbot.adapter.CustomMessageListener;
 import org.batukhtin.transcontbot.service.MailReaderService;
+import org.batukhtin.transcontbot.telegram.BotProducer;
 import org.eclipse.angus.mail.imap.IMAPFolder;
 import org.eclipse.angus.mail.util.MailConnectException;
+import org.eclipse.angus.mail.util.MailSSLSocketFactory;
 import org.springframework.stereotype.Service;
 
 import java.net.UnknownHostException;
@@ -25,6 +27,7 @@ public class MailReaderServiceImpl implements MailReaderService {
 
     private final MailProperties mailProperties;
     private final CustomMessageListener customMessageListener;
+    private final BotProducer botProducer;
 
     @PostConstruct
     public void startListening() {
@@ -34,7 +37,9 @@ public class MailReaderServiceImpl implements MailReaderService {
     public void listenForEmails() {
         try {
             Properties props = new Properties();
+            MailSSLSocketFactory sf = new MailSSLSocketFactory();
             props.put("mail.store.protocol", "imaps");
+            props.put("mail.store.protocol.socketFactory", sf);
 
             Session session = Session.getInstance(props);
             Store store = session.getStore();
@@ -57,18 +62,23 @@ public class MailReaderServiceImpl implements MailReaderService {
                     Thread.sleep(60000);
                 }
             }
-        } catch (FolderClosedException e) {
+        }
+        catch (FolderClosedException e) {
             //log.error("Перезапуск подключения");
             listenForEmails();
         } catch (MailConnectException e){
             try {
+                botProducer.sendLogs("Перезапуск подключения в течении 5 минут");
                 TimeUnit.MINUTES.sleep(5);
                 listenForEmails();
             } catch (InterruptedException ex) {
+                botProducer.sendLogs("Возможно бот умер :(" + ex.getMessage());
                 Thread.currentThread().interrupt();
             }
         }catch (Exception e) {
             log.error("Ошибка при подключении к IMAP", e);
+            botProducer.sendLogs("Ошибка при подключении к IMAP\n\n"+ e.getMessage());
+            listenForEmails();
         }
     }
 }
